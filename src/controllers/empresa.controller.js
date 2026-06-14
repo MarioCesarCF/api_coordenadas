@@ -1,76 +1,108 @@
 import EmpresaRepository from "../repositories/empresa.repository.js";
-import UsuarioRepository from "../repositories/usuario.repository.js";
 
 const empresaRepository = new EmpresaRepository();
-const usuarioRepository = new UsuarioRepository();
 
 class EmpresaController {
-  create = async (req, res) => {
-    const body = req.body;
-    body.usuario = await usuarioRepository.findById(body.userId);
-
+  create = async (req, res, next) => {
     try {
+      const body = { ...req.body, usuario: req.userId };
       const company = await empresaRepository.create(body);
 
-      return res.status(201).send(company);
+      return res.status(201).json(company);
     } catch (err) {
-      if (err.status && err.message) {
-        return res.status(err.status).send({ message: err.message });
-      } else {
-        return res.status(500).send({ message: 'Erro interno do servidor.' });
-      }
+      next(err);
     }
   };
 
-  findAll = async (req, res) => {
+  findAll = async (req, res, next) => {
     try {
       const { name, document, city } = req.query;
-      const companies = await empresaRepository.showAllCompany(name, document, city);
+      const companies = await empresaRepository.showAllCompany(
+        req.userId,
+        name,
+        document,
+        city
+      );
 
-      return res.status(200).send(companies);
+      return res.json(companies);
     } catch (err) {
-      if (err.status && err.message) {
-        return res.status(err.status).send({ message: err.message });
-      } else {
-        return res.status(500).send({ message: 'Erro interno do servidor.' });
+      next(err);
+    }
+  };
+
+  findById = async (req, res, next) => {
+    try {
+      const company = await empresaRepository.findById(req.params.id);
+
+      if (!company) {
+        return res.status(404).json({ message: "Empresa não encontrada." });
       }
+
+      const ownerId =
+        typeof company.usuario === "object"
+          ? company.usuario?._id?.toString()
+          : company.usuario?.toString();
+
+      if (ownerId !== req.userId) {
+        return res.status(403).json({ message: "Acesso negado." });
+      }
+
+      return res.json(company);
+    } catch (err) {
+      next(err);
     }
   };
 
-  findById = async (req, res) => {
-    const { id: companyId } = req.params;
-    
+  update = async (req, res, next) => {
     try {
-      const company = await empresaRepository.findById(companyId);
+      const company = await empresaRepository.findById(req.params.id);
 
-      return res.status(200).send(company);
+      if (!company) {
+        return res.status(404).json({ message: "Empresa não encontrada." });
+      }
+
+      const ownerId =
+        typeof company.usuario === "object"
+          ? company.usuario?._id?.toString()
+          : company.usuario?.toString();
+
+      if (ownerId !== req.userId) {
+        return res.status(403).json({ message: "Acesso negado." });
+      }
+
+      const updated = await empresaRepository.update(
+        req.params.id,
+        req.body
+      );
+
+      return res.json(updated);
     } catch (err) {
-      res.status(500).send({ message: err.message });
+      next(err);
     }
   };
-  
-  update = async (req, res) => {
-    const body = req.body;
-    const { id: companyId } = req.params;
 
+  delete = async (req, res, next) => {
     try {
-      const response = await empresaRepository.update(body, companyId);
+      const company = await empresaRepository.findById(req.params.id);
 
-      return res.send(response);
+      if (!company) {
+        return res.status(404).json({ message: "Empresa não encontrada." });
+      }
+
+      const ownerId =
+        typeof company.usuario === "object"
+          ? company.usuario?._id?.toString()
+          : company.usuario?.toString();
+
+      if (ownerId !== req.userId) {
+        return res.status(403).json({ message: "Acesso negado." });
+      }
+
+      const deleted = await empresaRepository.excludes(req.params.id);
+
+      return res.json(deleted);
     } catch (err) {
-      return res.status(500).send(err.message);
-    }
-  };
-
-  delete = async (req, res) => {
-    const companyId = req.params.id;
-
-    try {
-      const company = await empresaRepository.excludes(companyId);
-
-      return res.send(company);
-    } catch (err) {
-      return res.status(500).send({ message: err.message });
+      next(err);
     }
   };
 }
