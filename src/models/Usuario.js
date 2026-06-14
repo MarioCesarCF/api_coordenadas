@@ -35,11 +35,9 @@ const UsuarioSchema = new mongoose.Schema({
   }
 });
 
-// TODO: aplicar criptografia para senhas
-// UsuarioSchema.pre("save", async function (next) {
-//   this.password = await bcrypt.hash(this.password, 10);
-//   next();
-// });
+UsuarioSchema.pre("save", async function () {
+  this.password = await bcrypt.hash(this.password, 10);
+});
 
 const Usuario = mongoose.model("Usuario", UsuarioSchema);
 
