@@ -1,4 +1,6 @@
 import EmpresaRepository from "../repositories/empresa.repository.js";
+import AuditLog from "../models/AuditLog.js";
+import { parseFile, autoDetectMapping, importEmpresas } from "../services/import.service.js";
 
 const empresaRepository = new EmpresaRepository();
 
@@ -7,6 +9,14 @@ class EmpresaController {
     try {
       const body = { ...req.body, usuario: req.userId };
       const company = await empresaRepository.create(body);
+
+      await AuditLog.create({
+        acao: "create",
+        entidade: "Empresa",
+        entidade_id: company._id,
+        usuario: req.userId,
+        dados: { nome: body.nome, numero_documento: body.numero_documento },
+      });
 
       return res.status(201).json(company);
     } catch (err) {
@@ -18,7 +28,6 @@ class EmpresaController {
     try {
       const { name, document, city } = req.query;
       const companies = await empresaRepository.showAllCompany(
-        req.userId,
         name,
         document,
         city
@@ -38,15 +47,6 @@ class EmpresaController {
         return res.status(404).json({ message: "Empresa não encontrada." });
       }
 
-      const ownerId =
-        typeof company.usuario === "object"
-          ? company.usuario?._id?.toString()
-          : company.usuario?.toString();
-
-      if (ownerId !== req.userId) {
-        return res.status(403).json({ message: "Acesso negado." });
-      }
-
       return res.json(company);
     } catch (err) {
       next(err);
@@ -61,21 +61,73 @@ class EmpresaController {
         return res.status(404).json({ message: "Empresa não encontrada." });
       }
 
-      const ownerId =
-        typeof company.usuario === "object"
-          ? company.usuario?._id?.toString()
-          : company.usuario?.toString();
-
-      if (ownerId !== req.userId) {
-        return res.status(403).json({ message: "Acesso negado." });
-      }
-
       const updated = await empresaRepository.update(
         req.params.id,
         req.body
       );
 
+      await AuditLog.create({
+        acao: "update",
+        entidade: "Empresa",
+        entidade_id: req.params.id,
+        usuario: req.userId,
+        dados: { antes: company.toObject(), depois: req.body },
+      });
+
       return res.json(updated);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  importFile = async (req, res, next) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "Nenhum arquivo enviado." });
+      }
+
+      const { headers, rows } = await parseFile(req.file.buffer, req.file.originalname);
+
+      let mapping = autoDetectMapping(headers);
+
+      if (req.body.mapping) {
+        let userMapping;
+        try {
+          userMapping = typeof req.body.mapping === "string"
+            ? JSON.parse(req.body.mapping)
+            : req.body.mapping;
+        } catch {
+          return res.status(400).json({ message: "Mapping inválido. Envie um JSON válido." });
+        }
+        mapping = { ...mapping, ...userMapping };
+      }
+
+      const result = await importEmpresas(rows, mapping, req.userId);
+
+      if (result.imported > 0) {
+        await AuditLog.create({
+          acao: "import",
+          entidade: "Empresa",
+          usuario: req.userId,
+          dados: {
+            total: result.total,
+            imported: result.imported,
+            skipped: result.skipped,
+            errors: result.errors.length,
+          },
+        });
+      }
+
+      return res.status(201).json(result);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  deleteAll = async (req, res, next) => {
+    try {
+      const result = await empresaRepository.deleteAll(req.userId);
+      return res.json({ message: `${result.deletedCount} empresa(s) removida(s).` });
     } catch (err) {
       next(err);
     }
@@ -89,16 +141,15 @@ class EmpresaController {
         return res.status(404).json({ message: "Empresa não encontrada." });
       }
 
-      const ownerId =
-        typeof company.usuario === "object"
-          ? company.usuario?._id?.toString()
-          : company.usuario?.toString();
-
-      if (ownerId !== req.userId) {
-        return res.status(403).json({ message: "Acesso negado." });
-      }
-
       const deleted = await empresaRepository.excludes(req.params.id);
+
+      await AuditLog.create({
+        acao: "delete",
+        entidade: "Empresa",
+        entidade_id: req.params.id,
+        usuario: req.userId,
+        dados: { nome: company.nome, numero_documento: company.numero_documento },
+      });
 
       return res.json(deleted);
     } catch (err) {

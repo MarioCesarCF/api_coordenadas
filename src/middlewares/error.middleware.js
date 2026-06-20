@@ -1,4 +1,8 @@
 const errorHandler = (err, req, res, next) => {
+  if (err.code === "LIMIT_FILE_SIZE") {
+    return res.status(400).json({ message: "Arquivo muito grande. Tamanho máximo: 5MB." });
+  }
+
   if (err.code === 11000) {
     const field = Object.keys(err.keyValue)[0];
     return res.status(409).json({ message: `${field} já está em uso.` });

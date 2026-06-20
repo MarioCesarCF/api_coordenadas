@@ -3,8 +3,8 @@ import Empresa from "../models/Empresa.js";
 class EmpresaRepository {
   create = (empresa) => Empresa.create(empresa);
 
-  showAllCompany = (userId, name, document, city) => {
-    const query = { usuario: userId };
+  showAllCompany = (name, document, city) => {
+    const query = {};
     if (name) query.nome = { $regex: name, $options: "i" };
     if (document) query.numero_documento = { $regex: document, $options: "i" };
     if (city) query.cidade = { $regex: city, $options: "i" };
@@ -21,6 +21,8 @@ class EmpresaRepository {
     );
 
   excludes = (id) => Empresa.findByIdAndDelete(id);
+
+  deleteAll = (userId) => Empresa.deleteMany({ usuario: userId });
 }
 
 export default EmpresaRepository;
