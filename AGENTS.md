@@ -17,7 +17,7 @@
 - Framework: **vitest** + **supertest** (HTTP assertions)
 - Each run connects to the `apiCoordenadas_test` database on Atlas and drops it after
 - Test files run sequentially (`fileParallelism: false` em `vitest.config.js`)
-- Covers: auth flow (login/validation), user CRUD (`/me`), empresa CRUD + ownership isolation
+- Covers: auth flow (login/validation), user CRUD (`/me`), empresa CRUD + import
 
 ## Architecture
 `src/routes/` → `src/controllers/` → `src/repositories/` → Mongoose models (`src/models/`)
@@ -27,12 +27,13 @@
 **Routes:**
 - `GET /` — health check `{"message": "API funcionando"}`
 - `/usuario` — `POST /login` (public), `POST /refresh` (public), `POST /` (criar, auth), `GET /me`, `PATCH /me`, `DELETE /me`, `POST /logout` (auth)
-- `/empresa` — CRUD com filtros (`?name=&document=&city`), sempre filtrando por dono (`req.userId`)
+- `/empresa` — CRUD com filtros (`?name=&document=&city`), visão global (todos veem/mexem em tudo). Rotas: `GET /`, `GET /:id`, `POST /`, `POST /import` (upload), `PATCH /:id`, `DELETE /:id`, `DELETE /all` (só do próprio usuário)
 
 **Models:**
 - `Usuario` — `password` tem `select: false` (excluída de queries por padrão); bcrypt hash em `pre("save")`
 - `Empresa` — referencia `Usuario` via ObjectId `usuario`, populado nas queries
 - `RefreshToken` — token hasheado (sha256), referência ao `Usuario`, expira_em, revogado_em
+- `AuditLog` — registro de auditoria com `acao` (create/update/delete/import), `entidade`, `entidade_id`, `usuario` e `dados`
 
 ## Authentication
 - `POST /usuario/login` aceita `{ email, password }`, retorna `{ accessToken, refreshToken, user }`
@@ -46,7 +47,7 @@
 
 ## Ownership control
 - **Usuário:** cada um vê/altera/exclui apenas a si mesmo (`/usuario/me`)
-- **Empresa:** cada um vê/altera/exclui apenas empresas onde `usuario === req.userId`
+- **Empresa:** cada um vê/altera/exclui em tudo. O `usuario` é registrado apenas para auditoria (`AuditLog`)
 
 ## Validation (zod)
 - Schemas: `src/validations/usuario.validation.js`, `src/validations/empresa.validation.js`

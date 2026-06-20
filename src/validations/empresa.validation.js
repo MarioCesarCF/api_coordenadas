@@ -36,6 +36,7 @@ export const createEmpresaSchema = z.object({
     .union([z.string(), z.number()])
     .pipe(z.coerce.number("Latitude deve ser um número."))
     .optional(),
+  fuso: z.string().optional(),
 });
 
 export const updateEmpresaSchema = z.object({
@@ -72,4 +73,5 @@ export const updateEmpresaSchema = z.object({
     .union([z.string(), z.number()])
     .pipe(z.coerce.number("Latitude deve ser um número."))
     .optional(),
+  fuso: z.string().optional(),
 });

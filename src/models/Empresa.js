@@ -70,6 +70,10 @@ const EmpresaDataSchema = new mongoose.Schema({
     type: Number,
     required: false,
   },
+  fuso: {
+    type: String,
+    required: false,
+  },
   usuario: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Usuario",
