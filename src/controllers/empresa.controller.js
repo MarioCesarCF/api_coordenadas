@@ -26,11 +26,12 @@ class EmpresaController {
 
   findAll = async (req, res, next) => {
     try {
-      const { name, document, city } = req.query;
+      const { name, document, city, numero_processo } = req.query;
       const companies = await empresaRepository.showAllCompany(
         name,
         document,
-        city
+        city,
+        numero_processo
       );
 
       return res.json(companies);
