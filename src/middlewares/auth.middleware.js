@@ -18,6 +18,8 @@ const authMiddleware = (req, res, next) => {
     const secret = process.env.JWT_SECRET;
     const decoded = jwt.verify(token, secret);
     req.userId = decoded.id;
+    req.organizacaoId = decoded.organizacao || null;
+    req.papel = decoded.papel || "membro";
     next();
   } catch (err) {
     return res.status(401).send({ message: "Token inválido ou expirado." });

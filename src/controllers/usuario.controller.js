@@ -7,7 +7,12 @@ const usuarioRepository = new UsuarioRepository();
 class UsuarioController {
   createUser = async (req, res, next) => {
     try {
-      const user = await usuarioRepository.create(req.body);
+      const userData = { ...req.body };
+      if (req.organizacaoId) {
+        userData.organizacao = req.organizacaoId;
+        userData.papel = "membro";
+      }
+      const user = await usuarioRepository.create(userData);
       return res.status(201).json(user);
     } catch (err) {
       next(err);
@@ -30,7 +35,7 @@ class UsuarioController {
         return res.status(401).json({ message: "Credenciais inválidas." });
       }
 
-      const accessToken = this._gerarAccessToken(user._id);
+      const accessToken = this._gerarAccessToken(user._id, user.organizacao, user.papel);
       const refreshToken = await usuarioRepository.criarRefreshToken(
         user._id,
         Number(process.env.REFRESH_TOKEN_EXPIRES_IN_DAYS) || 7
@@ -61,7 +66,12 @@ class UsuarioController {
           .json({ message: "Refresh token inválido ou expirado." });
       }
 
-      const accessToken = this._gerarAccessToken(tokenDoc.usuario);
+      const user = await usuarioRepository.findById(tokenDoc.usuario);
+      const accessToken = this._gerarAccessToken(
+        tokenDoc.usuario,
+        user?.organizacao || null,
+        user?.papel || "membro"
+      );
       return res.json({ accessToken });
     } catch (err) {
       next(err);
@@ -126,10 +136,10 @@ class UsuarioController {
     }
   };
 
-  _gerarAccessToken(userId) {
+  _gerarAccessToken(userId, organizacaoId = null, papel = "membro") {
     const secret = process.env.JWT_SECRET;
     const expiresIn = process.env.JWT_EXPIRES_IN || "15m";
-    return jwt.sign({ id: userId }, secret, { expiresIn });
+    return jwt.sign({ id: userId, organizacao: organizacaoId, papel }, secret, { expiresIn });
   }
 }
 

@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 const UsuarioSchema = new mongoose.Schema({
   criado_em: {
     type: Date,
-    default: Date.now(),
+    default: Date.now,
   },
   nome: {
     type: String,
@@ -32,7 +32,17 @@ const UsuarioSchema = new mongoose.Schema({
   telefone_contato: {
     type: String,
     required: false,
-  }
+  },
+  organizacao: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Organizacao",
+    required: false,
+  },
+  papel: {
+    type: String,
+    enum: ["admin", "membro"],
+    default: "membro",
+  },
 });
 
 UsuarioSchema.pre("save", async function () {
