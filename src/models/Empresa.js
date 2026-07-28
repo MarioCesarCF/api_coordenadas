@@ -79,6 +79,11 @@ const EmpresaDataSchema = new mongoose.Schema({
     ref: "Usuario",
     required: false,
   },
+  organizacao: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Organizacao",
+    required: false,
+  },
 });
 
 const Empresa = mongoose.model("Empresas", EmpresaDataSchema);

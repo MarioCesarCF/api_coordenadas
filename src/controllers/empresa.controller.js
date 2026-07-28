@@ -7,7 +7,11 @@ const empresaRepository = new EmpresaRepository();
 class EmpresaController {
   create = async (req, res, next) => {
     try {
-      const body = { ...req.body, usuario: req.userId };
+      const body = {
+        ...req.body,
+        usuario: req.userId,
+        organizacao: req.organizacaoId,
+      };
       const company = await empresaRepository.create(body);
 
       await AuditLog.create({
@@ -31,7 +35,8 @@ class EmpresaController {
         name,
         document,
         city,
-        numero_processo
+        numero_processo,
+        req.organizacaoId
       );
 
       return res.json(companies);
@@ -42,7 +47,7 @@ class EmpresaController {
 
   findById = async (req, res, next) => {
     try {
-      const company = await empresaRepository.findById(req.params.id);
+      const company = await empresaRepository.findById(req.params.id, req.organizacaoId);
 
       if (!company) {
         return res.status(404).json({ message: "Empresa não encontrada." });
@@ -56,7 +61,7 @@ class EmpresaController {
 
   update = async (req, res, next) => {
     try {
-      const company = await empresaRepository.findById(req.params.id);
+      const company = await empresaRepository.findById(req.params.id, req.organizacaoId);
 
       if (!company) {
         return res.status(404).json({ message: "Empresa não encontrada." });
@@ -64,7 +69,8 @@ class EmpresaController {
 
       const updated = await empresaRepository.update(
         req.params.id,
-        req.body
+        req.body,
+        req.organizacaoId
       );
 
       await AuditLog.create({
@@ -103,7 +109,7 @@ class EmpresaController {
         mapping = { ...mapping, ...userMapping };
       }
 
-      const result = await importEmpresas(rows, mapping, req.userId);
+      const result = await importEmpresas(rows, mapping, req.userId, req.organizacaoId);
 
       if (result.imported > 0) {
         await AuditLog.create({
@@ -127,7 +133,7 @@ class EmpresaController {
 
   deleteAll = async (req, res, next) => {
     try {
-      const result = await empresaRepository.deleteAll(req.userId);
+      const result = await empresaRepository.deleteAll(req.userId, req.organizacaoId);
       return res.json({ message: `${result.deletedCount} empresa(s) removida(s).` });
     } catch (err) {
       next(err);
@@ -136,13 +142,13 @@ class EmpresaController {
 
   delete = async (req, res, next) => {
     try {
-      const company = await empresaRepository.findById(req.params.id);
+      const company = await empresaRepository.findById(req.params.id, req.organizacaoId);
 
       if (!company) {
         return res.status(404).json({ message: "Empresa não encontrada." });
       }
 
-      const deleted = await empresaRepository.excludes(req.params.id);
+      const deleted = await empresaRepository.excludes(req.params.id, req.organizacaoId);
 
       await AuditLog.create({
         acao: "delete",

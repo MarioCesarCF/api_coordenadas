@@ -200,7 +200,7 @@ function compareRowWithExisting(row, existing) {
 
 const IGNORE_ON_ERROR = new Set(["fuso", "area_autorizada"]);
 
-export async function importEmpresas(rows, mapping, userId) {
+export async function importEmpresas(rows, mapping, userId, organizacaoId = null) {
   const result = {
     total: rows.length,
     imported: 0,
@@ -209,7 +209,8 @@ export async function importEmpresas(rows, mapping, userId) {
     companies: [],
   };
 
-  const existingAll = await Empresa.find({ usuario: userId }).lean();
+  const filter = organizacaoId ? { organizacao: organizacaoId } : { usuario: userId };
+  const existingAll = await Empresa.find(filter).lean();
   const existingByDoc = new Map();
   for (const emp of existingAll) {
     const key = emp.numero_documento;
@@ -237,6 +238,7 @@ export async function importEmpresas(rows, mapping, userId) {
   for (let i = 0; i < rows.length; i++) {
     const rawRow = rows[i];
     const mapped = { usuario: userId };
+    if (organizacaoId) mapped.organizacao = organizacaoId;
 
     for (const [header, field] of Object.entries(mapping)) {
       const val = rawRow[header];
@@ -266,6 +268,7 @@ export async function importEmpresas(rows, mapping, userId) {
       numero_documento: String(numero_documento).trim(),
       cidade: String(cidade).trim(),
     };
+    if (organizacaoId) data.organizacao = organizacaoId;
 
     const np = mapped.numero_processo;
     if (np !== undefined && np !== null && String(np).trim() !== "") {

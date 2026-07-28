@@ -27,27 +27,39 @@
 **Routes:**
 - `GET /` — health check `{"message": "API funcionando"}`
 - `/usuario` — `POST /login` (public), `POST /refresh` (public), `POST /` (criar, auth), `GET /me`, `PATCH /me`, `DELETE /me`, `POST /logout` (auth)
-- `/empresa` — CRUD com filtros (`?name=&document=&city`), visão global (todos veem/mexem em tudo). Rotas: `GET /`, `GET /:id`, `POST /`, `POST /import` (upload), `PATCH /:id`, `DELETE /:id`, `DELETE /all` (só do próprio usuário)
+- `/empresa` — CRUD com filtros (`?name=&document=&city`), isolamento multi-tenant por `organizacao`. Rotas: `GET /`, `GET /:id`, `POST /`, `POST /import` (upload), `PATCH /:id`, `DELETE /:id`, `DELETE /all` (da própria organização)
+- `/organizacao` — `POST /` (criar), `GET /me`, `PATCH /me`, `GET /membros`, `POST /membros` (convidar), `DELETE /membros/:id`
 
 **Models:**
-- `Usuario` — `password` tem `select: false` (excluída de queries por padrão); bcrypt hash em `pre("save")`
-- `Empresa` — referencia `Usuario` via ObjectId `usuario`, populado nas queries
+- `Organizacao` — slug (único), nome, cnpj, plano (free/essential/profissional/enterprise), status (trial/ativo/cancelado/expirado), config_limites (max_empresas, max_usuarios, storage_gb, calculos_habilitados, dominio_personalizado_habilitado), dados_asaas
+- `Usuario` — adicionado `organizacao` (ref Organizacao) e `papel` (admin/membro). `password` tem `select: false`; bcrypt hash em `pre("save")`
+- `Empresa` — referencia `Usuario` via ObjectId `usuario` e `Organizacao` via `organizacao`. Queries filtram por `organizacao` quando disponível
 - `RefreshToken` — token hasheado (sha256), referência ao `Usuario`, expira_em, revogado_em
 - `AuditLog` — registro de auditoria com `acao` (create/update/delete/import), `entidade`, `entidade_id`, `usuario` e `dados`
 
 ## Authentication
 - `POST /usuario/login` aceita `{ email, password }`, retorna `{ accessToken, refreshToken, user }`
-- `accessToken`: JWT assinado com `JWT_SECRET` do `.env`, expira em `JWT_EXPIRES_IN` (default 15m)
+- `accessToken`: JWT assinado com `JWT_SECRET` do `.env`, expira em `JWT_EXPIRES_IN` (default 15m). Payload inclui `id`, `organizacao` e `papel`
 - `refreshToken`: string randômica de 40 bytes, dura `REFRESH_TOKEN_EXPIRES_IN_DAYS` (default 7d), armazenada hasheada no banco
 - `POST /usuario/refresh` aceita `{ refreshToken }`, retorna novo `{ accessToken }`
 - `POST /usuario/logout` (auth) aceita `{ refreshToken }` opcional; se omitido, revoga todos os tokens do usuário
 - Header: `Authorization: Bearer <accessToken>`
-- Middleware: `src/middlewares/auth.middleware.js` — seta `req.userId`
-- Middleware aplicado via `router.use(authMiddleware)` em empresa e usuario (exceto login e refresh)
+- Middleware: `src/middlewares/auth.middleware.js` — seta `req.userId`, `req.organizacaoId`, `req.papel`
+- Middleware aplicado via `router.use(authMiddleware)` em empresa, organizacao e usuario (exceto login e refresh)
 
-## Ownership control
-- **Usuário:** cada um vê/altera/exclui apenas a si mesmo (`/usuario/me`)
-- **Empresa:** cada um vê/altera/exclui em tudo. O `usuario` é registrado apenas para auditoria (`AuditLog`)
+## Multi-tenancy
+- Cada organização isola dados de empresas (toda query filtra por `organizacao`)
+- Usuários sem organização (legado) continuam sem isolamento (backwards compatible)
+- JWT contém `organizacao` — middleware decodifica e seta `req.organizacaoId`
+- Repositórios aceitam `organizacaoId` opcional; se presente, filtram por ele
+- `POST /organizacao` cria organização e vincula usuário como admin
+- Convidar membros: `POST /organizacao/membros` (só admin), verifica limite do plano
+
+## Migration
+- `npm run migrate-org` transforma cada usuário existente em sua própria organização
+- Vincula todas as empresas do usuário à organização criada
+- Define papel como "admin" para o usuário original
+- Define limites generosos (max_empresas: 99999, max_usuarios: 5) para não quebrar nada
 
 ## Validation (zod)
 - Schemas: `src/validations/usuario.validation.js`, `src/validations/empresa.validation.js`

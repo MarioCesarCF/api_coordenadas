@@ -9,7 +9,8 @@
     "dev": "nodemon ./src/server.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed": "node src/seed.js"
+    "seed": "node src/seed.js",
+    "migrate-org": "node src/migrate-org.js"
   },
   "repository": {
     "type": "git",
@@ -31,6 +32,7 @@
     "mongodb": "^7.2.0",
     "mongoose": "^9.6.2",
     "multer": "^2.1.1",
+    "pdf-parse": "^2.4.5",
     "xlsx": "^0.18.5",
     "xml2js": "^0.6.2",
     "zod": "^4.4.3"
