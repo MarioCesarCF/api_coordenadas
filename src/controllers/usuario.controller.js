@@ -1,6 +1,10 @@
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import UsuarioRepository from "../repositories/usuario.repository.js";
+import ResetToken from "../models/ResetToken.js";
+import { enviarEmail } from "../services/email.service.js";
+import { templateRedefinirSenha } from "../views/emails/redefinir-senha.js";
 
 const usuarioRepository = new UsuarioRepository();
 
@@ -131,6 +135,82 @@ class UsuarioController {
       }
 
       return res.json(user);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  esqueciSenha = async (req, res, next) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ message: "Email é obrigatório." });
+      }
+
+      const user = await usuarioRepository.findByEmail(email);
+      if (!user) {
+        return res.status(200).json({ message: "Se o email existir, enviaremos um link de redefinição." });
+      }
+
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+      await ResetToken.create({
+        email: user.email,
+        token: hashedToken,
+        expira_em: new Date(Date.now() + 15 * 60 * 1000),
+      });
+
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      const link = `${frontendUrl}/redefinir-senha/${rawToken}`;
+
+      await enviarEmail({
+        para: user.email,
+        assunto: "Sylven — Redefina sua senha",
+        html: templateRedefinirSenha(user.nome, link),
+      });
+
+      return res.json({ message: "Se o email existir, enviaremos um link de redefinição." });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  redefinirSenha = async (req, res, next) => {
+    try {
+      const { token, novaSenha } = req.body;
+      if (!token || !novaSenha) {
+        return res.status(400).json({ message: "Token e nova senha são obrigatórios." });
+      }
+
+      if (novaSenha.length < 3) {
+        return res.status(400).json({ message: "Senha deve ter no mínimo 3 caracteres." });
+      }
+
+      const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+      const resetToken = await ResetToken.findOne({
+        token: hashedToken,
+        utilizado_em: null,
+        expira_em: { $gt: new Date() },
+      });
+
+      if (!resetToken) {
+        return res.status(400).json({ message: "Token inválido ou expirado." });
+      }
+
+      const user = await usuarioRepository.findByEmail(resetToken.email);
+      if (!user) {
+        return res.status(400).json({ message: "Usuário não encontrado." });
+      }
+
+      user.password = novaSenha;
+      await user.save();
+
+      resetToken.utilizado_em = new Date();
+      await resetToken.save();
+
+      return res.json({ message: "Senha redefinida com sucesso." });
     } catch (err) {
       next(err);
     }
