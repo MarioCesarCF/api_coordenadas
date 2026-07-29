@@ -2,7 +2,7 @@ import "dotenv/config";
 import mongoose from "mongoose";
 import Usuario from "./models/Usuario.js";
 
-const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || "admin@apicoordenadas.com";
+const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || "admin@sylven.com.br";
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || "Admin@123456";
 
 async function seed() {
