@@ -14,7 +14,7 @@ const DocumentoStatusSchema = new mongoose.Schema({
 const DocumentoSchema = new mongoose.Schema({
   empresa: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Empresa",
+    ref: "Empresas",
     required: true,
   },
   organizacao: {
@@ -70,9 +70,8 @@ const DocumentoSchema = new mongoose.Schema({
   },
 });
 
-DocumentoSchema.pre("save", function (next) {
+DocumentoSchema.pre("save", function () {
   this.atualizado_em = new Date();
-  next();
 });
 
 DocumentoSchema.index({ empresa: 1 });

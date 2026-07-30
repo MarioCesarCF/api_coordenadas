@@ -65,7 +65,6 @@ describe("POST /usuario/refresh", () => {
     const loginRes = await request
       .post("/usuario/login")
       .send({ email: user.email, password: user.plainPassword });
-
     const res = await request
       .post("/usuario/refresh")
       .send({ refreshToken: loginRes.body.refreshToken });

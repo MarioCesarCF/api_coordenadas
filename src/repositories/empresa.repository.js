@@ -1,15 +1,19 @@
 import Empresa from "../models/Empresa.js";
 
+function escaparRegex(texto) {
+  return texto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 class EmpresaRepository {
   create = (empresa) => Empresa.create(empresa);
 
   showAllCompany = (name, document, city, process, organizacaoId = null) => {
     const query = {};
     if (organizacaoId) query.organizacao = organizacaoId;
-    if (name) query.nome = { $regex: name, $options: "i" };
-    if (document) query.numero_documento = { $regex: document, $options: "i" };
-    if (city) query.cidade = { $regex: city, $options: "i" };
-    if (process) query.numero_processo = { $regex: process, $options: "i" };
+    if (name) query.nome = { $regex: escaparRegex(name), $options: "i" };
+    if (document) query.numero_documento = { $regex: escaparRegex(document), $options: "i" };
+    if (city) query.cidade = { $regex: escaparRegex(city), $options: "i" };
+    if (process) query.numero_processo = { $regex: escaparRegex(process), $options: "i" };
     return Empresa.find(query).populate("usuario organizacao").sort({ criado_em: -1 });
   };
 

@@ -73,16 +73,35 @@
 - Erros com `err.status` → `err.status { message }`
 - Todos os controllers chamam `next(err)` em vez de `res.send(err.message)`
 
-## `.env`
-| Var | Purpose |
-|-----|---------|
-| `DATABASE_URL` | MongoDB Atlas connection string |
-| `API_PORT` | Express listen port (default 27017) |
-| `JWT_SECRET` | Secret for signing JWT tokens (64 hex chars) |
-| `JWT_EXPIRES_IN` | Access token duration (default `15m`) |
-| `REFRESH_TOKEN_EXPIRES_IN_DAYS` | Refresh token lifetime in days (default `7`) |
-| `SEED_ADMIN_EMAIL` | Admin email for `npm run seed` |
-| `SEED_ADMIN_PASSWORD` | Admin password for `npm run seed` |
+## Environment
+
+### `.env` (gitignored — contém secrets)
+| Var | Purpose | Dev | Prod (Render) |
+|-----|---------|-----|---------------|
+| `DATABASE_URL` | MongoDB Atlas connection string | `.env` local | env var no Render |
+| `API_PORT` | Express listen port | `27017` | `27017` |
+| `JWT_SECRET` | Secret for signing JWT tokens | `.env` local | env var no Render |
+| `JWT_EXPIRES_IN` | Access token duration | `15m` | `15m` |
+| `REFRESH_TOKEN_EXPIRES_IN_DAYS` | Refresh token lifetime | `7` | `7` |
+| `FRONTEND_URL` | Frontend origin(s) para CORS | `http://localhost:5173` | URL do frontend em produção |
+| `SENDGRID_API_KEY` | SendGrid API key (opcional) | `.env` local | env var no Render |
+| `SENDGRID_FROM_EMAIL` | Remetente de emails | `.env` local | env var no Render |
+
+### CORS
+- `FRONTEND_URL` aceita CSV (ex: `http://localhost:5173,https://sylven.app`)
+- Em dev (`NODE_ENV !== "production"`), adiciona automaticamente `localhost:5173` e `localhost:4173`
+- Cookie `sameSite`: `none` em produção, `lax` em dev
+
+## Cálculo Florestal (Fase 3)
+- Módulo em `src/routes/calculo.route.js` → `src/controllers/calculo.controller.js`
+- **Modelos:** `ProjetoCalculo` (projetos), `Arvore` (árvores individuais)
+- **Motor:** `src/services/calculo/engine.service.js` — funções puras (DAP, AB, volume, estatística, fitossociologia)
+- **Import:** `src/services/calculo/import.service.js` — parse de XLSX de campo com detecção automática de colunas
+- **Coeficientes default (ES/Mata Atlântica):** Valor1=-9,821818496, Valor2=2,1551551721, Valor3=0,790768692
+- **Fórmula volume:** EXP(V1 + V2*ln(DAP) + V3*ln(altura))
+- **Rotas autenticadas:** POST/GET/DELETE `/calculo/projeto`, POST `/calculo/projeto/:id/importar`, POST `/calculo/projeto/:id/processar`, GET `/calculo/projeto/:id/resultados`
+- **CORS:** Suporta múltiplos origins via `FRONTEND_URL` (pode ser CSV separado por vírgulas)
+- **Cookie sameSite:** `none` em produção, `lax` em desenvolvimento
 
 ## Known issues
 - `models/Usuario.js` has `password` with `select: false`; `findByEmail` must use `.select("+password")` to include it

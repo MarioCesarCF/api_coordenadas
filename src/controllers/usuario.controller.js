@@ -45,6 +45,18 @@ class UsuarioController {
         Number(process.env.REFRESH_TOKEN_EXPIRES_IN_DAYS) || 7
       );
 
+      const cookieOpts = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      };
+
+      res.cookie("accessToken", accessToken, { ...cookieOpts, maxAge: 15 * 60 * 1000 });
+      res.cookie("refreshToken", refreshToken, {
+        ...cookieOpts,
+        maxAge: Number(process.env.REFRESH_TOKEN_EXPIRES_IN_DAYS || 7) * 24 * 60 * 60 * 1000,
+      });
+
       const userData = user.toObject();
       delete userData.password;
 
@@ -55,7 +67,7 @@ class UsuarioController {
   };
 
   refreshToken = async (req, res, next) => {
-    const { refreshToken } = req.body;
+    const refreshToken = req.body?.refreshToken || req.cookies?.refreshToken;
 
     if (!refreshToken) {
       return res.status(400).json({ message: "Refresh token é obrigatório." });
@@ -76,6 +88,14 @@ class UsuarioController {
         user?.organizacao || null,
         user?.papel || "membro"
       );
+
+      res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        maxAge: 15 * 60 * 1000,
+      });
+
       return res.json({ accessToken });
     } catch (err) {
       next(err);
@@ -83,14 +103,17 @@ class UsuarioController {
   };
 
   logout = async (req, res, next) => {
-    const { refreshToken } = req.body;
+    const refreshToken = req.body?.refreshToken || req.cookies?.refreshToken;
 
     try {
       if (refreshToken) {
         await usuarioRepository.revogarRefreshToken(refreshToken);
-      } else {
+      } else if (req.userId) {
         await usuarioRepository.revogarTodosTokens(req.userId);
       }
+
+      res.clearCookie("accessToken");
+      res.clearCookie("refreshToken");
 
       return res.json({ message: "Logout realizado com sucesso." });
     } catch (err) {
@@ -183,8 +206,8 @@ class UsuarioController {
         return res.status(400).json({ message: "Token e nova senha são obrigatórios." });
       }
 
-      if (novaSenha.length < 3) {
-        return res.status(400).json({ message: "Senha deve ter no mínimo 3 caracteres." });
+      if (novaSenha.length < 8 || !/[A-Z]/.test(novaSenha) || !/[0-9]/.test(novaSenha)) {
+        return res.status(400).json({ message: "Senha deve ter no mínimo 8 caracteres, uma maiúscula e um número." });
       }
 
       const hashedToken = crypto.createHash("sha256").update(token).digest("hex");

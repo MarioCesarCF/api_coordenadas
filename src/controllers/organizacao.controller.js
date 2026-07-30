@@ -1,5 +1,7 @@
+import jwt from "jsonwebtoken";
 import Organizacao from "../models/Organizacao.js";
 import Usuario from "../models/Usuario.js";
+import Empresa from "../models/Empresa.js";
 
 class OrganizacaoController {
 
@@ -31,7 +33,18 @@ class OrganizacaoController {
         papel: "admin",
       });
 
-      return res.status(201).json(org);
+      await Empresa.updateMany(
+        { usuario: req.userId, $or: [{ organizacao: { $exists: false } }, { organizacao: null }] },
+        { $set: { organizacao: org._id } }
+      );
+
+      const novoAccessToken = jwt.sign(
+        { id: req.userId, organizacao: org._id, papel: "admin" },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
+      );
+
+      return res.status(201).json({ organizacao: org, accessToken: novoAccessToken });
     } catch (err) {
       next(err);
     }

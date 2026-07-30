@@ -8,7 +8,7 @@ export const createUser = async (overrides = {}) => {
   const data = {
     nome: "Usuário Teste",
     email: `teste${suffix}@email.com`,
-    password: "123",
+    password: "Teste1234",
     numero_documento: `123456789${counter}`,
     tipo_perfil: "admin",
     ...overrides,
