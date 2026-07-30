@@ -58,9 +58,8 @@ const OrganizacaoSchema = new mongoose.Schema({
   },
 });
 
-OrganizacaoSchema.pre("save", function (next) {
+OrganizacaoSchema.pre("save", function () {
   this.atualizado_em = new Date();
-  next();
 });
 
 const Organizacao = mongoose.model("Organizacao", OrganizacaoSchema);

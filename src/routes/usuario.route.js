@@ -7,13 +7,16 @@ import {
   loginSchema,
   updateUserSchema,
 } from "../validations/usuario.validation.js";
+import { loginLimiter, esqueciSenhaLimiter } from "../middlewares/rateLimiter.middleware.js";
 
 const route = Router();
 
 const usuarioController = new UsuarioController();
 
-route.post("/login", validate(loginSchema), usuarioController.loginUser);
+route.post("/login", loginLimiter, validate(loginSchema), usuarioController.loginUser);
 route.post("/refresh", usuarioController.refreshToken);
+route.post("/esqueci-senha", esqueciSenhaLimiter, usuarioController.esqueciSenha);
+route.post("/redefinir-senha", usuarioController.redefinirSenha);
 route.use(authMiddleware);
 route.get("/me", usuarioController.showMe);
 route.post("/", validate(createUserSchema), usuarioController.createUser);

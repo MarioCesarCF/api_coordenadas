@@ -1,5 +1,9 @@
 import Documento from "../models/Documento.js";
 
+function escaparRegex(texto) {
+  return texto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 class DocumentoRepository {
   async create(data) {
     return Documento.create(data);
@@ -10,7 +14,7 @@ class DocumentoRepository {
 
     if (filtros.organizacaoId) query.organizacao = filtros.organizacaoId;
     if (filtros.empresa) query.empresa = filtros.empresa;
-    if (filtros.nome) query.nome = { $regex: filtros.nome, $options: "i" };
+    if (filtros.nome) query.nome = { $regex: escaparRegex(filtros.nome), $options: "i" };
 
     if (filtros.vencimento_ate) {
       query.data_vencimento = { $lte: new Date(filtros.vencimento_ate) };

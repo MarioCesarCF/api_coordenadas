@@ -1,5 +1,7 @@
+import jwt from "jsonwebtoken";
 import Organizacao from "../models/Organizacao.js";
 import Usuario from "../models/Usuario.js";
+import Empresa from "../models/Empresa.js";
 
 class OrganizacaoController {
 
@@ -31,7 +33,18 @@ class OrganizacaoController {
         papel: "admin",
       });
 
-      return res.status(201).json(org);
+      await Empresa.updateMany(
+        { usuario: req.userId, $or: [{ organizacao: { $exists: false } }, { organizacao: null }] },
+        { $set: { organizacao: org._id } }
+      );
+
+      const novoAccessToken = jwt.sign(
+        { id: req.userId, organizacao: org._id, papel: "admin" },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
+      );
+
+      return res.status(201).json({ organizacao: org, accessToken: novoAccessToken });
     } catch (err) {
       next(err);
     }
@@ -55,6 +68,16 @@ class OrganizacaoController {
     }
   };
 
+  _limitesPorPlano(plano) {
+    const limites = {
+      free: { max_empresas: 5, max_usuarios: 1, storage_gb: 0, calculos_habilitados: false, dominio_personalizado_habilitado: false },
+      essential: { max_empresas: 200, max_usuarios: 5, storage_gb: 2, calculos_habilitados: false, dominio_personalizado_habilitado: true },
+      profissional: { max_empresas: 1000, max_usuarios: 20, storage_gb: 10, calculos_habilitados: true, dominio_personalizado_habilitado: true },
+      enterprise: { max_empresas: 99999, max_usuarios: 99999, storage_gb: 50, calculos_habilitados: true, dominio_personalizado_habilitado: true },
+    };
+    return limites[plano] || limites.free;
+  }
+
   updateMine = async (req, res, next) => {
     try {
       const user = await Usuario.findById(req.userId);
@@ -66,10 +89,14 @@ class OrganizacaoController {
         return res.status(403).json({ message: "Apenas administradores podem alterar a organização." });
       }
 
-      const allowed = ["nome", "dominio_personalizado"];
+      const allowed = ["nome", "dominio_personalizado", "plano"];
       const updates = {};
       for (const key of allowed) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
+      }
+
+      if (req.body.plano) {
+        updates.config_limites = this._limitesPorPlano(req.body.plano);
       }
 
       const org = await Organizacao.findByIdAndUpdate(

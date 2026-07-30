@@ -23,7 +23,7 @@ describe("POST /usuario (criar)", () => {
       .send({
         nome: "Novo Usuário",
         email: "novo@email.com",
-        password: "456",
+        password: "Senha1234",
         numero_documento: "0987654321",
         tipo_perfil: "user",
       });
@@ -38,7 +38,7 @@ describe("POST /usuario (criar)", () => {
       .set("Authorization", `Bearer ${accessToken}`)
       .send({
         email: "sem_nome@email.com",
-        password: "456",
+        password: "Senha1234",
         numero_documento: "111111",
         tipo_perfil: "user",
       });

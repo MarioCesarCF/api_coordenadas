@@ -93,6 +93,16 @@ class EmpresaController {
         return res.status(400).json({ message: "Nenhum arquivo enviado." });
       }
 
+      const ext = req.file.originalname.toLowerCase().slice(req.file.originalname.lastIndexOf("."));
+      const magicBytes = req.file.buffer.slice(0, 8).toString("hex");
+
+      if (ext === ".xlsx" && !magicBytes.startsWith("504b")) {
+        return res.status(400).json({ message: "Arquivo xlsx inválido ou corrompido." });
+      }
+      if (ext === ".xls" && !magicBytes.startsWith("d0cf11e0a1b11ae1")) {
+        return res.status(400).json({ message: "Arquivo xls inválido ou corrompido." });
+      }
+
       const { headers, rows } = await parseFile(req.file.buffer, req.file.originalname);
 
       let mapping = autoDetectMapping(headers);

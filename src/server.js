@@ -1,11 +1,13 @@
 import "dotenv/config";
 import app from "./app.js";
 import connection from "./config/dbConfig.js";
+import { configurarEmail } from "./services/email.service.js";
 
 const port = process.env.API_PORT || 27017;
 
 try {
   await connection();
+  configurarEmail();
   app.listen(port, () => console.log(`App ouvindo porta: ${port}`));
 } catch (err) {
   console.error("Falha ao iniciar servidor:", err);

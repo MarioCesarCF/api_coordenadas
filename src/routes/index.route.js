@@ -5,10 +5,12 @@ import usuarioRoute from "./usuario.route.js";
 import empresaRoute from "./empresa.route.js";
 import organizacaoRoute from "./organizacao.route.js";
 import documentoRoute from "./documento.route.js";
+import calculoRoute from "./calculo.route.js";
 
 router.use("/usuario", usuarioRoute);
 router.use("/empresa", empresaRoute);
 router.use("/organizacao", organizacaoRoute);
 router.use("/documento", documentoRoute);
+router.use("/calculo", calculoRoute);
 
 export default router;
