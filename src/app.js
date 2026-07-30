@@ -35,10 +35,7 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin || ORIGINS.includes(origin)) return cb(null, true);
-    cb(null, false);
-  },
+  origin: ORIGINS,
   credentials: true,
 }));
 app.use(express.json());
