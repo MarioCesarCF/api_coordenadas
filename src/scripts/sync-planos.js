@@ -1,7 +1,7 @@
 import "dotenv/config";
 import mongoose from "mongoose";
 import Organizacao from "../models/Organizacao.js";
-import { conectarBanco } from "../config/dbConfig.js";
+import conectarBanco from "../config/dbConfig.js";
 import { limitesPorPlano, PLANO_LABELS } from "../config/planos.js";
 
 async function sincronizar() {
