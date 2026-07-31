@@ -1,6 +1,7 @@
 import EmpresaRepository from "../repositories/empresa.repository.js";
 import AuditLog from "../models/AuditLog.js";
 import { parseFile, autoDetectMapping, importEmpresas } from "../services/import.service.js";
+import { contarEmpresas } from "../middlewares/planLimit.middleware.js";
 
 const empresaRepository = new EmpresaRepository();
 
@@ -104,6 +105,16 @@ class EmpresaController {
       }
 
       const { headers, rows } = await parseFile(req.file.buffer, req.file.originalname);
+
+      if (req.org && req.org.config_limites?.max_empresas !== 99999) {
+        const limite = req.org.config_limites?.max_empresas ?? 5;
+        const count = await contarEmpresas(req.organizacaoId);
+        if (count + rows.length > limite) {
+          return res.status(403).json({
+            message: `O arquivo excede o limite de empresas do seu plano (${limite}). Exclua registros ou faça upgrade.`,
+          });
+        }
+      }
 
       let mapping = autoDetectMapping(headers);
 

@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import Organizacao from "../models/Organizacao.js";
 import Usuario from "../models/Usuario.js";
 import Empresa from "../models/Empresa.js";
+import { limitesPorPlano } from "../config/planos.js";
 
 class OrganizacaoController {
 
@@ -19,13 +20,7 @@ class OrganizacaoController {
         slug,
         status: "trial",
         data_expiracao: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        config_limites: {
-          max_empresas: 5,
-          max_usuarios: 1,
-          storage_gb: 0,
-          calculos_habilitados: false,
-          dominio_personalizado_habilitado: false,
-        },
+        config_limites: limitesPorPlano("free"),
       });
 
       await Usuario.findByIdAndUpdate(req.userId, {
@@ -68,16 +63,6 @@ class OrganizacaoController {
     }
   };
 
-  _limitesPorPlano(plano) {
-    const limites = {
-      free: { max_empresas: 5, max_usuarios: 1, storage_gb: 0, calculos_habilitados: false, dominio_personalizado_habilitado: false },
-      essential: { max_empresas: 200, max_usuarios: 5, storage_gb: 2, calculos_habilitados: false, dominio_personalizado_habilitado: true },
-      profissional: { max_empresas: 1000, max_usuarios: 20, storage_gb: 10, calculos_habilitados: true, dominio_personalizado_habilitado: true },
-      enterprise: { max_empresas: 99999, max_usuarios: 99999, storage_gb: 50, calculos_habilitados: true, dominio_personalizado_habilitado: true },
-    };
-    return limites[plano] || limites.free;
-  }
-
   updateMine = async (req, res, next) => {
     try {
       const user = await Usuario.findById(req.userId);
@@ -96,7 +81,7 @@ class OrganizacaoController {
       }
 
       if (req.body.plano) {
-        updates.config_limites = this._limitesPorPlano(req.body.plano);
+        updates.config_limites = limitesPorPlano(req.body.plano);
       }
 
       const org = await Organizacao.findByIdAndUpdate(

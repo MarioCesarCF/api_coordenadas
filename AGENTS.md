@@ -12,12 +12,13 @@
 | Create admin user | `npm run seed` |
 | Run all tests | `npm test` |
 | Watch mode | `npm run test:watch` |
+| Sync limites das orgs ao plano | `npm run sync:planos` |
 
 ## Tests
 - Framework: **vitest** + **supertest** (HTTP assertions)
 - Each run connects to the `apiCoordenadas_test` database on Atlas and drops it after
 - Test files run sequentially (`fileParallelism: false` em `vitest.config.js`)
-- Covers: auth flow (login/validation), user CRUD (`/me`), empresa CRUD + import
+- Covers: auth flow (login/validation), user CRUD (`/me`), empresa CRUD + import, enforcement de limites de plano (`__tests__/planLimit.test.js`)
 
 ## Architecture
 `src/routes/` → `src/controllers/` → `src/repositories/` → Mongoose models (`src/models/`)
@@ -27,7 +28,7 @@
 **Routes:**
 - `GET /` — health check `{"message": "API funcionando"}`
 - `/usuario` — `POST /login` (public), `POST /refresh` (public), `POST /` (criar, auth), `GET /me`, `PATCH /me`, `DELETE /me`, `POST /logout` (auth)
-- `/empresa` — CRUD com filtros (`?name=&document=&city`), isolamento multi-tenant por `organizacao`. Rotas: `GET /`, `GET /:id`, `POST /`, `POST /import` (upload), `PATCH /:id`, `DELETE /:id`, `DELETE /all` (da própria organização)
+- `/empresa` — CRUD com filtros (`?name=&document=&city`), isolamento multi-tenant por `organizacao`. Rotas: `GET /`, `GET /:id`, `POST /` (valida `max_empresas`), `POST /import` (upload, valida limite somando as linhas do arquivo), `PATCH /:id`, `DELETE /:id`, `DELETE /all` (da própria organização)
 - `/organizacao` — `POST /` (criar), `GET /me`, `PATCH /me`, `GET /membros`, `POST /membros` (convidar), `DELETE /membros/:id`
 
 **Models:**
@@ -54,6 +55,16 @@
 - Repositórios aceitam `organizacaoId` opcional; se presente, filtram por ele
 - `POST /organizacao` cria organização e vincula usuário como admin
 - Convidar membros: `POST /organizacao/membros` (só admin), verifica limite do plano
+
+## Limites de plano (enforcement)
+- Definições centralizadas em `src/config/planos.js` (`LIMITES_POR_PLANO`, `limitesPorPlano`, `PLANO_LABELS`); `organizacao.controller.js` usa esse módulo
+- Middleware `src/middlewares/planLimit.middleware.js`:
+  - `carregarOrganizacao` — busca a org pelo `req.organizacaoId` e seta `req.org` (aplicado em empresa, documento e calculo)
+  - `requireCalculos` — 403 se `!config_limites.calculos_habilitados`; aplicado **apenas nas ações** de `/calculo` (POST criar, importar, processar e DELETE). GET de lista/projeto/resultados fica liberado (modo leitura)
+  - `checkEmpresaLimit` — 403 se `count(Empresa da org) >= max_empresas` (aplicado em `POST /empresa`); o import valida `count + rows > max` no próprio controller
+  - `checkStorage` — 403 se `storage_gb <= 0` ou se `uso + arquivo > storage_gb` (aplicado em `POST /documento` após o multer)
+- **Enforcement só vale para usuários com organização.** Usuários legado (sem `organizacao`) não são bloqueados (backwards compatible)
+- `npm run sync:planos` (`src/scripts/sync-planos.js`) sincroniza `config_limites` de todas as orgs com o plano atual — necessário após migrar orgs antigas (que tinham limites generosos do `migrate-org`)
 
 ## Migration
 - `npm run migrate-org` transforma cada usuário existente em sua própria organização

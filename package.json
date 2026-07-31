@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed": "node src/seed.js",
-    "migrate-org": "node src/migrate-org.js"
+    "migrate-org": "node src/migrate-org.js",
+    "sync:planos": "node src/scripts/sync-planos.js"
   },
   "repository": {
     "type": "git",
